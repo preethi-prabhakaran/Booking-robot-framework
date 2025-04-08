@@ -1,0 +1,53 @@
+pipeline {
+    agent any
+
+    environment {
+        PYTHON_ENV = 'robot-env'
+        ROBOT_REPORT_DIR = 'results'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Cloning the Git repository...'
+                checkout scm
+            }
+        }
+
+        stage('Setup Python & Dependencies') {
+            steps {
+                echo 'Creating Python virtual environment and installing dependencies...'
+                sh '''
+                    python -m venv ${PYTHON_ENV}
+                    source ${PYTHON_ENV}/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                '''
+            }
+        }
+
+        stage('Run Robot Tests') {
+            steps {
+                echo 'Running Robot Framework test suite...'
+                sh '''
+                    source ${PYTHON_ENV}/bin/activate
+                    robot --outputdir ${ROBOT_REPORT_DIR} tests/
+                '''
+            }
+        }
+
+        stage('Publish Test Reports') {
+            steps {
+                echo 'Publishing Robot Framework test reports...'
+                publishHTML([
+                    allowMissing: false,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: "${ROBOT_REPORT_DIR}",
+                    reportFiles: 'report.html,log.html',
+                    reportName: 'Robot Framework Report'
+                ])
+            }
+        }
+    }
+}
